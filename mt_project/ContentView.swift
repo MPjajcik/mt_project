@@ -9,17 +9,20 @@ import SwiftUI
 
 struct Joke: Codable, Identifiable {
     public var id: Int
+    public var type: String
     public var setup: String
     public var punchline: String
 }
 
 class FetchJoke: ObservableObject {
     @Published var jokes = [Joke]()
+    @Published var selectedType: Int = 0
     @Published var loaded: Bool
+    @ObservedObject var userSettings = UserSettings()
+    public var url = URL(string: "https://official-joke-api.appspot.com/random_ten")!
     
     init() {
         self.loaded = false
-        let url = URL(string: "https://official-joke-api.appspot.com/random_ten")!
         URLSession.shared.dataTask(with: url) {(data, response, error) in
             do {
                 if let jokeData = data {
@@ -38,8 +41,24 @@ class FetchJoke: ObservableObject {
     }
     
     func getJokes() {
+        switch selectedType {
+        case 0:
+            url = URL(string: "https://official-joke-api.appspot.com/random_ten")!
+            print("random")
+        case 1:
+            url = URL(string: "https://official-joke-api.appspot.com/jokes/knock-knock/ten")!
+            print("konec")
+        case 2:
+            url = URL(string: "https://official-joke-api.appspot.com/jokes/programming/ten")!
+            print("program")
+        case 3:
+            url = URL(string: "https://official-joke-api.appspot.com/jokes/general/ten")!
+            print("general")
+        default:
+            url = URL(string: "https://official-joke-api.appspot.com/random_ten")!
+            print("default")
+        }
         self.loaded = false
-        let url = URL(string: "https://official-joke-api.appspot.com/random_ten")!
         URLSession.shared.dataTask(with: url) {(data, response, error) in
             do {
                 if let jokeData = data {
@@ -67,6 +86,7 @@ struct CardModifier: ViewModifier {
     
 }
 
+
 struct ProductCard: View {
     var setup: String
     var punchline: String
@@ -84,14 +104,6 @@ struct ProductCard: View {
                         .foregroundColor(.gray)
                         .padding()
                     Spacer()
-                    Button(action: {
-                        
-                    }) {
-                        Image(systemName: "heart.fill")
-                    }.foregroundColor(.white)
-                    .padding(7)
-                    .background(Color.red)
-                    .cornerRadius(8)
                 })
                 
             }.padding(.trailing, 20)
@@ -104,6 +116,7 @@ struct ProductCard: View {
         .padding(10)
     }
 }
+
 
 class UserSettings: ObservableObject {
     @Published var username: String {
@@ -118,18 +131,18 @@ class UserSettings: ObservableObject {
 }
 
 struct ContentView: View {
-    
+    var types = ["Random", "Knock Knock", "Programming", "General"]
+    public var type: String = ""
     @ObservedObject var fetchJoke = FetchJoke()
     @ObservedObject var userSettings = UserSettings()
+    
     
     var body: some View {
         VStack(alignment: .center, content: {
             Image("jokefylogo");
             Spacer()
-            Text("Hi \(userSettings.username)")
+            Text("Hi \(userSettings.username) here are your \(types[fetchJoke.selectedType]) jokes")
                 .font(.headline);
-            TextField("Enter your name", text: $userSettings.username).textFieldStyle(RoundedBorderTextFieldStyle()).padding()
-            
             TabView {
                 VStack(alignment: /*@START_MENU_TOKEN@*/.center/*@END_MENU_TOKEN@*/, spacing: /*@START_MENU_TOKEN@*/nil/*@END_MENU_TOKEN@*/, content: {
                     Button(action: {
@@ -140,9 +153,11 @@ struct ContentView: View {
                     .padding(7)
                     .background(Color.red)
                     .cornerRadius(8)
+                    Spacer()
                     Group{
                         if fetchJoke.loaded == false {
                             ProgressView()
+                            Spacer()
                         } else {
                             List(fetchJoke.jokes) { item in
                                 VStack(alignment: .leading) {
@@ -158,11 +173,40 @@ struct ContentView: View {
                     Image(systemName: "list.bullet")
                     Text("Jokes")
                 }
-                Text("Here will be your saved jokes")
-                    .tabItem {
-                        Image(systemName: "heart.fill")
-                        Text("Saved Jokes")
-                    }
+                NavigationView{
+                    Form{
+                        Section{
+                            HStack(alignment: /*@START_MENU_TOKEN@*/.center/*@END_MENU_TOKEN@*/, content: {
+                                Text("Profile Picture (TBD)").font(.headline)
+                                Spacer()
+                                Image(systemName: "person.crop.circle")
+                                
+                            })
+                            
+                        }
+                        Section{
+                            Text("Name").font(.headline)
+                            TextField("Enter your name", text: $userSettings.username).textFieldStyle(RoundedBorderTextFieldStyle()).padding()
+                        }
+                        Section {
+                            Picker(selection: $fetchJoke.selectedType, label: Text("Prefered Jokes")){
+                                ForEach(0 ..< types.count) {
+                                    Text(self.types[$0])
+                                }
+                            }.pickerStyle(DefaultPickerStyle())
+                            Text("Refresh jokes after selection").font(.caption)
+                            
+                        }
+                    }.navigationBarHidden(true)
+                    
+                }
+                .padding()
+                
+                
+                .tabItem {
+                    Image(systemName: "person.crop.circle")
+                    Text("Profile")
+                }
             }
         })
     }
